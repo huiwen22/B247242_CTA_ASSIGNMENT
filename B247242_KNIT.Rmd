@@ -1,0 +1,496 @@
+---
+title: "try5.3"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+date: "2024-05-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse) # loads dplyr, ggplot2, and others
+library(ggthemes) # includes a set of themes to make your visualizations look nice!
+library(readr) # more informative and easy way to import data
+library(stringr) # to handle text elements
+library(rvest) #for scraping
+library(quanteda)
+library(stopwords)
+library(Matrix)
+library(irlba)
+library(RSpectra)
+library(dplyr)
+library(tibble)
+library(rvest)
+library(xml2)
+library(textstem)
+library(tm)
+library(SnowballC)
+library(hcandersenr)
+library(tidytext)
+library(lubridate)
+library(preText)
+```
+
+
+####1###Creating my own dataset: finding relevant research articles and collect their urls into the dataframe: "papers"
+```{r}
+papers <- data.frame( #create a dataframe to contain the urls
+  id = 1:74, #give the identifer for each url, now we have collected 74 articles
+  urls = c(
+    "https://link.springer.com/article/10.1007/s10113-021-01785-z", 
+    "https://link.springer.com/article/10.1007/s13280-016-0842-1",
+    "https://link.springer.com/article/10.1007/s13280-016-0825-2",
+    "https://rgs-ibg.onlinelibrary.wiley.com/doi/10.1111/geoj.12321",
+    "https://compass.onlinelibrary.wiley.com/doi/10.1111/gec3.12121",
+    "https://iopscience.iop.org/article/10.1088/1748-9326/ab2f57",
+    "https://link.springer.com/article/10.1007/s10708-022-10638-z",
+    "https://link.springer.com/chapter/10.1007/978-3-030-05237-9_8",
+    "https://www.tandfonline.com/doi/full/10.1080/00330124.2013.821730",
+    "https://onlinelibrary.wiley.com/doi/10.1002/jid.3259",
+    "https://iopscience.iop.org/article/10.1088/1748-9326/10/12/123003",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2017.1372266",
+    "https://www.tandfonline.com/doi/full/10.1080/23311843.2018.1512838",
+    "https://www.tandfonline.com/doi/abs/10.1080/19480881.2010.536669",
+    "https://iopscience.iop.org/article/10.1088/1748-9326/7/2/025601",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2015.1005038",
+    "https://link.springer.com/chapter/10.1007/978-3-030-12974-3_32",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2011.627419",
+    "https://link.springer.com/article/10.1007/s10668-020-00614-3",
+    "https://link.springer.com/article/10.1007/s10584-019-02447-0",
+    "https://link.springer.com/article/10.1007/s10113-018-1357-z",
+    "https://journals.sagepub.com/doi/10.1177/0971521517716808",
+    "https://www.emerald.com/insight/content/doi/10.1108/IJCCSM-02-2020-0018/full/html",
+    "https://academic.oup.com/heapro/article/32/6/930/2951037",
+    "https://journals.sagepub.com/doi/10.1177/194277861901200102",
+    "https://www.tandfonline.com/doi/full/10.1080/10130950.2014.932560",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2015.1050978",
+    "https://journals.sagepub.com/doi/10.1177/0956247813517851",
+    "https://www.scirp.org/journal/paperinformation?paperid=123598",
+    "https://link.springer.com/article/10.1007/s41748-022-00324-y",
+    "https://www.emerald.com/insight/content/doi/10.1108/IJSE-09-2022-0595/full/html",
+    "https://www.tandfonline.com/doi/full/10.1080/13552070802696839",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2023.2246038",
+    "https://www.tandfonline.com/doi/full/10.1080/23311886.2022.2054152",
+    "https://link.springer.com/article/10.1007/s11069-020-04482-y",
+    "https://www.mdpi.com/2073-445X/11/8/1240",
+    "https://www.mdpi.com/2071-1050/11/10/2977",
+    "https://link.springer.com/article/10.1007/s13280-016-0833-2",
+    "https://link.springer.com/chapter/10.1007/978-3-030-82774-8_9",
+    "https://wires.onlinelibrary.wiley.com/doi/10.1002/wcc.565",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2017.1372262",
+    "https://www.tandfonline.com/doi/full/10.1080/14735903.2017.1336411",
+    "https://link.springer.com/referenceworkentry/10.1007/978-3-030-45106-6_169",
+    "https://www.tandfonline.com/doi/full/10.1080/13552074.2015.1096620",
+    "https://www.tandfonline.com/doi/full/10.1080/0966369X.2019.1693344",
+    "https://onlinelibrary.wiley.com/doi/10.1111/j.1539-6924.2012.01836.x",
+    "https://link.springer.com/referenceworkentry/10.1007/978-3-030-22759-3_315-1",
+    "https://www.tandfonline.com/doi/full/10.1080/25729861.2021.1984638",
+    "https://link.springer.com/article/10.1007/s10668-019-00566-3",
+    "https://link.springer.com/article/10.1007/s13280-016-0827-0",
+    "https://www.mdpi.com/2225-1154/11/5/104",
+    "https://link.springer.com/article/10.1007/s42087-020-00154-2",
+    "https://link.springer.com/article/10.1007/s10113-019-01562-z",
+    "https://link.springer.com/chapter/10.1007/978-3-031-40124-4_3",
+    "https://www.scirp.org/journal/paperinformation?paperid=57525",
+    "https://link.springer.com/chapter/10.1007/978-3-031-53333-4_3",
+    "https://www.tandfonline.com/doi/full/10.1080/17477891.2021.1945996",
+    "https://link.springer.com/article/10.1007/s11069-016-2664-7",
+    "https://www.emerald.com/insight/content/doi/10.1108/IJCCSM-10-2016-0156/full/html",
+    "https://link.springer.com/chapter/10.1007/978-3-030-47786-8_17",
+    "https://www.tandfonline.com/doi/full/10.1080/10130950.2014.958907",
+    "https://iopscience.iop.org/article/10.1088/1748-9326/10/12/123003",
+    "https://www.tandfonline.com/doi/full/10.1080/0312407X.2012.738366",
+    "https://journals.sagepub.com/doi/10.1177/0956247819828274",
+    "https://www.tandfonline.com/doi/full/10.1080/13549839.2012.729571",
+    "https://www.tandfonline.com/doi/full/10.1080/00291951.2010.550167",
+    "https://www.tandfonline.com/doi/full/10.1080/13876988.2020.1829454",
+    "https://wires.onlinelibrary.wiley.com/doi/full/10.1002/wcc.451",
+    "https://www.tandfonline.com/doi/full/10.1080/17565529.2019.1580555",
+    "https://www.emerald.com/insight/content/doi/10.1108/IJCCSM-01-2018-0009/full/html",
+    "https://onlinelibrary.wiley.com/doi/full/10.1111/1758-5899.12400",
+    "https://link.springer.com/article/10.1007/s10113-017-1105-9",
+    "https://link.springer.com/article/10.1007/s11069-023-06070-2",
+    "https://link.springer.com/article/10.1007/s10113-014-0741-6"
+  )
+)
+```
+
+
+#although we have those articles, but we need further locate the title, date, content of each article from avoce urls. so we need selectors, the urls from the same domain often have the same selectors corresponding with the title, date, and pubication. So, I choose certain urls and open it and find the relevant selectors, and categorize these slectors for corresponding urls.
+```{r}
+selector_map <- tibble( #I use the tibble to map each domain to specific CSS selectors)
+  domain = c("https://journals.sagepub.com","https://www.emerald.com","https://academic.oup.com","https://www.mdpi.com","https://www.scirp.org","https://link.springer.com","wiley","https://iopscience.iop.org","https://www.tandfonline.com"), 
+  main_content_selector = c("#bodymatter", ".Body", ".chapter-para", ".html-p", "p", ".main-content", ".article-section__content", ".article-text", ".hlFld-Fulltext"),
+  publication_date_selector = c(".meta-panel__onlineDate", ".intent_journal_publication_date", ".citation-date", "span", "a", "time", ".epub-date", ".wd-jnl-art-pub-date", ".itemPageRangeHistory"),
+  title_selector = c("h1", ".mb-3", ".at-articleTitle", ".hypothesis_container", ".art_title", ".c-article-title", ".citation__title", ".wd-jnl-art-title", ".hlFld-title")
+)
+selectordecide <- c("https://journals.sagepub.com","https://www.emerald.com","https://academic.oup.com","https://www.mdpi.com","https://www.scirp.org","https://link.springer.com","wiley","https://iopscience.iop.org","https://www.tandfonline.com") #ensure the script only scrape urls from a predefined list 
+```
+
+
+#new we can start to scrape those information we need for esbalishing dataset, and clean the data at the same time. NOTE TO THE EXAMINERS: Since the dataset is alway changing because the networks, I have used the dataset in 10th of may, however, because of my laptop crash in the 11th of may, I cannot find the results I download yesterday, when I run this code below, the dataset was updated and some texts in the main_content is missing. It is too late to rewrite my results, so I decide to use the former dataset, as the tidy_skipgrams remain the same. I am very sorry to bring you any inconvinience.
+```{r}
+#checking the first character in the date string; because these dates are not normalized, and there are three type of irregular dates that should be normalized as %d/%m/%Y
+check_first_char <- function(input_string) {
+  first_char <- substr(input_string, 1, 1) #use the "substr" function to check the first charater of the date string
+  ###published date type
+    if (str_detect(string = input_string, pattern = fixed("Published online:", ignore_case = TRUE))){
+     return(1) #check if the first character include Published online without considering case sensitivity; if the condition is met, the return (1) will be executed
+  }
+  ####article type
+  else if(first_char=="A"){ #similarly, if the first character = A, the return (2) will be executed
+    return(2)
+  }
+  ### 15 May 2022 type
+  else if(first_char=="F"){ #if the first character = F, the return (3) will be executed
+    return(3)
+  }
+  else{
+    return(4) #if none of them meet the conditions above, then we execute the return (4)
+  }
+}
+validate_data <- function(mydate_string,myoption){ # convert date strings into a standardized date format (%d/%m/%Y) based on the type identified by check_first_char.
+  if(myoption==1){
+     mydate_string <- str_extract(mydate_string, "(?<=Published online: )\\d{2} \\w+ \\d{4}") ##if the myoption == 1, the following codes will be executed. Because some dates were written as Published online: 11 May 2024, e.g., we need to process it. By using the str_extract function to extract a date substring from mydate_string. The regex engine means that finds the position in the string that follows directly after the phrase "published online". \\d{2} is to match the two digits as the day of the month; and then one word will match the month name. \\d{4} match exactly the four digits as the year.
+
+     # convert the date string into the date object by using the dmy() function from the package "lubricate"
+     date_obj <- dmy(mydate_string)  
+
+     # format the date objects into a string following a specified date format
+     formatted_date <- format(date_obj, "%d/%m/%Y")
+  }
+  else if(myoption==2){ ##if the myoption == 2, in this case, we specifically extract and format date string that follows the sentence "article publication date"
+      mydate_string <- sub(".*Article publication date: ([0-9]{1,2} [A-Za-z]+ [0-9]{4}).*", "\\1", mydate_string) # the sub function is used to extract the date from a longer string and that could be part of sentence.
+      date_obj <- dmy(mydate_string) 
+      formatted_date <- format(date_obj, "%d/%m/%Y")
+  }
+  else if(myoption==3){
+      date <- str_extract(mydate_string, "(?<=First published online )\\w+ \\d{1,2},? \\d{4}") #we can still use the regular expression to find the string after "published online", it is the same as the first condition.we match one or two digit as the day, and a word as month, four digit as year. while the date string is different with the first condition, so I use mdy version to match the dates.
+      date_obj <- mdy(date)
+      formatted_date <- format(date_obj, "%d/%m/%Y")
+  }
+  else{
+      date_obj <- dmy(mydate_string)
+      formatted_date <- format(date_obj, "%d/%m/%Y") #if the dates not meet above conditions, we just format it by dmy function and transfer it into %d/%m/%Y
+  }
+  return(formatted_date)
+}
+# now we focus on the textual content, I use the extract_content to extract content from the webpage based on the specified CSS selectors.
+extract_content <- function(url, selector) { #we input two parameters, url is the web address, and the selector is CSS selector.
+  page <- tryCatch({ 
+    read_html(url)
+  }, error = function(e) {
+    NA  # #we read the html of the page, if an error occurs it will catch the error and return NA 
+  })
+  
+  if (is.na(page)) { #check if the page was loaded successfully, if we cannot load an article, the content will be NA.
+    content <- NA
+  } else {
+    # ensure the selector is a single string, if we have multiple selectors, it will only choose the first one
+    if (length(selector) > 0) {
+      selector <- selector[1]  # and take the first selector when we have contained multiple selectors.
+    }
+    elements <- html_elements(page, selector)
+    if (length(elements) > 0) { #check if all elements are found, if yes, it will extract the full text from these elements and trims any leading and trailing white space.
+      content <- html_text(elements, trim = TRUE) 
+    } else {
+      content <- NA #if no elements match the selector, "content" will be fill with "NA"
+    }
+  }
+  return(content)
+}
+#now we can start scrape information from based urls and corresponding selectors.
+extract_info_from_url <- function(url, selectors) {
+  title <- first(extract_content(url, selectors$title_selector)) #extract the title from urls in respective title_selectors and ensure only the first element of a vector is returned
+  publication_date <- first(extract_content(url, selectors$publication_date_selector)) # extract the publication date
+  main_content <- first(extract_content(url, selectors$main_content_selector)) # extract the main content
+  return(list(title = title, publication_date = publication_date, main_content = main_content))
+}
+
+# match a URL to a set of CSS selectors based on the domain patterns provided
+extract_selectors_for_url <- function(url, selector_map) { # uses the selector_map, which should contain domain patterns and their corresponding CSS selectors.
+  # now we create a loop to iterate through each domain patter contained in the list selectordecide and check if the current domain can be found in the url.
+  for (domain_pattern in selectordecide) {
+    if (str_detect(url, domain_pattern)) {
+      matched_selectors <- filter(selector_map, domain == domain_pattern) # checks each row of selector_map to see if the value in the domain column matches the current domain_pattern being processed in the loop
+      if (nrow(matched_selectors) > 0) { #check if any rows left after filtering, if it does, it means that there are corresponding selectors for the domain patter found in the url.
+        return(matched_selectors)
+      }
+    }
+  }
+  return(NULL) # if we can'f find the corresponding slector, it will return "null"
+}
+results <- tibble(id = integer(), title = character(), publication_date = character(), main_content = character()) #we create a dataframe for storing the extracted data
+counter=0 # a counter is initialized to track the condiitons that failed to scrape content.
+# iterate over urls.
+for (i in seq_along(papers$urls)){ #this loop will go through each url stored in the papers dataframe, in the column of urls.
+  url <- papers$urls[i]
+  selectors <- extract_selectors_for_url(url, selector_map) # for each url, it will find the corresponding CSS selectors by calling the extract_selectors_for_url function
+  
+  if (!is.null(selectors)) { #check the selectors were successfully fetched. 
+    # extract information
+    info <- extract_info_from_url(url, selectors) #extract title, publication date, and main content.
+    print(info$publication_date)
+    if(!is.na(info$publication_date)&&nchar(info$publication_date)>5){ #ensures the publication date is not NA, if it does, further processing would be inappropriate. and ensure the date string is longer than 5 characters so it is a complemte date rather than partial
+    mydatepoint <- check_first_char(info$publication_date) #check the format of the "publication_date"
+    info$publication_date= validate_data(info$publication_date,mydatepoint) #check the publication date extracted from web scraping task is correctly formatted and validated before it is further processed or stored. 
+    }
+    info$main_content <- tolower(info$main_content) #convert text to lower case
+    info$main_content <- gsub("[[:punct:]]", " ", info$main_content) # remove punctuation
+    info$main_content <- gsub("[\r\n]", " ", info$main_content) #replace new lines and carriage returns
+    info$main_content <- gsub("\\d", " ", info$main_content) #remove digit
+    stopwords_en <- quanteda::stopwords(language = "en") #load stopwords
+    # Replace stopwords with a single space
+    info$main_content <- stringr::str_replace_all(info$main_content, paste0("\\b(", paste(stopwords_en, collapse = "|"), ")\\b"), " ")
+    print(info$publication_date)
+    print(info$main_content)
+    # add into the data frame of "results" 
+    results <- results %>%
+      add_row(id = papers$id[i], title = info$title, publication_date =info$publication_date, main_content = info$main_content)
+    if(nchar(info$main_content)<100 ||is.na(info$main_content)){ #check if the length of the text in the "main_content" is less than 100 or the main_content is NA
+    counter=counter+1 #if any above conditions are met, it will increase a counter
+    print(counter)
+    }
+    
+  } else {
+    # if we can't find the corresponding content, then we fill it with 'failed'
+    results <- results %>%
+      add_row(id = papers$id[i], title = "failed", publication_date = "failed", main_content = "failed")
+  }
+}
+
+# output the result
+print(results)
+```
+#check and clean the data, I found some irregular words in the result of word embedding, so I clean it in advnce
+
+####2###: word-embeddings, when we have prepared out dataset, we can start to create word vectors
+
+#load packages
+```{r}
+library(tidyverse) # loads dplyr, ggplot2, and others
+library(stringr) # to handle text elements
+library(tidytext) # includes set of functions useful for manipulating text
+library(ggthemes) # to make your plots look nice
+library(text2vec) # for word embedding implementation
+library(widyr) # for reshaping the text data
+library(irlba) # for svd
+library(umap) # for dimensionality reduction
+```
+
+
+#I am going to create my own word vetor directly from my dataset I scraped above. I will use the techniques "Singular Value Decomposition (SVD)" to crate the embeddings of "vulnerability", "women", "femininity", "men", "masculinity", "non-binary" by making caculations based on the frequencies with which word appear in different contexts.
+
+#The first step we need to split our text in main_content into 6 word context windows, and then we can assign each windows a number to identify each words in each context, and then we combine the skipgrams and id (document number) to fastly identify the words in different contexts, and documents (articles)
+```{r}
+tidy_skipgrams <- results%>% #create a new dataframe "tidy_skipgrams" from "results"
+    unnest_tokens(ngram, main_content, token = "ngrams", n = 6) %>% ##by using unnest_tokens function, we can tokenize the texts into n-gram of length 6, which means the "results" are splited into word groups in order, so we can see the main_content in results by each 6words-group
+    mutate(ngramID = row_number()) %>% #create new column "ngramID" to assign an identifier to each row
+    tidyr::unite(skipgramID, id, ngramID) %>% #now we have both ngramID and id (for each document), we can use tidyr::unite to combine them together to show them both clearaly, which is "skipgramID"
+    unnest_tokens(main_content, ngram) #now we retokenise n-grams into single words for analyzing skip-grams
+
+head(tidy_skipgrams, n=20) #running first 2 lines of code to see the reformatted dataset.
+```
+#from the above tables, we can find the words in the main-content have been splited into 6-grams, namely, the context windows include 6 words, by which individual words are assigned with the identifier of document, and n-gramID
+
+```{r}
+# Calculate the occurrence of a "word" with another "word". This step involves calculating the frequency of each word within a context window and the count of occurrences alongside another word. This is done based on the skipgramID (which constructs a context window). If a word appears twice within the same skipgramID, both occurrences are considered. If a word appears multiple times across different skipgramIDs, then the counts of its co-occurrences with other words are also calculated.
+
+# now we can calculate the skipgram probabilities by calculating percentages of the co-occurrence of word 1 with other words (include wrod 1) in the overall word paris in the entire dataset.
+
+skipgram_probs <- tidy_skipgrams %>% #create a new dataframe "skipgram_probs" from "tidy_skipgrams"
+    pairwise_count(main_content, skipgramID, diag = TRUE, sort = TRUE) %>% # use pairwise_count we can compute that how frequently pairs of words occur together within context windows. so the occurrence in each word in the main_content will be calculated in each skipgram (identified by its skipgramID), diag = TRUE means that we will also compute the self-paring count in which we not only compute a word with other words, but we also know the occurrence of one word with itself in context windows. We can see the most common paring words (word1 and word2) by using sort = TRUE
+ 
+    mutate(p = n / sum(n)) # create a new column "p", the percentage of each pair's occurrence relative to all pairs
+
+head(skipgram_probs[1000:1020,], n=20)
+```
+
+
+# In this result, we can find the words biophysical and biophysical, vulnerability and households, effect and effect appears 272 times together, as the most common word-parings in the dataset
+
+#Now we have the skipgram probabilities, we can nornalize the skipgram probabilities by computating the unirgam probabilities in which the probabilities of each word in the corpus will be computated, normalized by the total number of words in the dataset.
+
+```{r}
+#calculate unigram probabilities (used to normalize skipgram probabilities later)
+unigram_probs <- results %>% #create a new dataframe "unigram_probs" from "results"
+    unnest_tokens(word, main_content) %>% #tokenize the main_content into individual words
+    count(word, sort = TRUE) %>% #coun the frequency of each word and sort them in descending order
+    mutate(p = n / sum(n)) #create a new column "p" in the unigram_probs dataframe, dividing the count of words by the total number of words. 
+```
+
+#finanlly, we can normalize skipgram_probs, which is unnite the normalized_prob and skipgram_probs, then we can compute the P_together value as p values is divded by p1*p2.
+
+```{r}
+#normalize skipgram probabilities
+normalized_prob <- skipgram_probs %>%
+    filter(n > 20) %>% #filter out skipgrams with n <=20
+    rename(word1 = item1, word2 = item2) %>% #rename the colums "item1" and "item2" by "word1" and "word2" to match the skipgram probabilities' colums
+    left_join(unigram_probs %>% #  for each word in the skipgram pairs (word1 and word2), their respective unigram probabilities (p1 and p2) are merged into the data frame.
+                  select(word1 = word, p1 = p),
+              by = "word1") %>%   #this merge adds the unigram probability of word1 from unigram_probs to each corresponding entry in skipgram_probs
+    left_join(unigram_probs %>% 
+                  select(word2 = word, p2 = p), #similarly, join unigram probability of word 2 to its corresponding skipgram_probs
+              by = "word2") %>%
+    mutate(p_together = p / p1 / p2) #crate a new column "p_together" as the skipgram probability divided by the unigram probability for word 1 and word 2,  P(x,y)/P(x)P(y). so we can know, does the words (x) and (y) occur more often than we would expect if they were independent. if p_together >1, it means they have higher association in the corpus. otherwise, they migh not have particular association in the corpus
+
+normalized_prob %>% #once we have normalized skipgram probabilities, we can find the association of word1 and word2 in a given word, based on the value of p_together
+    filter(word1 == "vulnerability") %>%
+    arrange(-p_together)
+```
+
+#The result shows that the vulnerability have stronger association with words like vulnerbaility (per se), index(there are some issues in cleaning the data), exposure, increase, differentiated, frameworks....Now I am  going to further validate the association of word 1 and word 2 by logging the p_together value to further computate the value of Pointwise Mutual Information; if the PMI larger, the association is stronger, otherwise, the assositation between word 1 and word 2 is lower. 
+```{r}
+library(RSpectra)
+pmi_matrix <- normalized_prob %>%
+    mutate(pmi = log10(p_together)) %>% #compute the pmi value. 
+    cast_sparse(word1, word2, pmi) #create a sparse matrx that contain word 1, word2 and their corresponding pmi value
+
+#remove missing data: replacing the NA by 0
+pmi_matrix@x[is.na(pmi_matrix@x)] <- 0 #1. when P(x,y)=P(x)P(y), indicating the word 1 and word 2 are independent from each other, the PMI value would be 0; and if he p(x,y) < p(x)p(y), the PMI value might be minus 1.
+
+#run SVD
+pmi_svd <- svds(pmi_matrix, k = 256, opts = list(maxitr = 500)) #here, we are setting the length of the vector size equal 256, and the maximum for irritation is 500
+
+glimpse(pmi_matrix)
+```
+
+
+```{r}
+#next we output the word vectors
+word_vectors <- pmi_svd$u
+rownames(word_vectors) <- rownames(pmi_matrix)
+
+dim(word_vectors)
+```
+
+
+
+```{r}
+#find the nearest words based on word vectors
+nearest_words <- function(word_vectors, word){
+  selected_vector = word_vectors[word,] #it can extract the specified word 
+  print(3)
+  mult = as.data.frame(word_vectors %*% selected_vector) #dot product of selected word vector and all word vectors
+  mult %>%
+  rownames_to_column() %>% #convert the row names of the dataframe  as "rowname"
+  rename(word = rowname,
+         similarity = V1) %>% #the default name of V1 will be renamed as similarity
+    anti_join(get_stopwords(language = "en")) %>% #remove all stopwords
+  arrange(-similarity) # sort it as a descending order based on the value of "similarity"
+
+}
+```
+
+```{r}
+vulnerability_synonyms <- nearest_words(word_vectors, "vulnerability")
+```
+
+```{r}
+head(vulnerability_synonyms, n=20)
+```
+#in this graph of vulnerability_synonyms, we can find that top 10 words related with "vulnerability". The connotation of vulnerability in the context might be gender, social, adaptability, and its methodology for measurement is building index, visualizing it in diagram.
+```{r}
+climate_synonyms <- nearest_words(word_vectors, "climate")
+head(climate_synonyms, n=20)
+```
+#here, we find the most similar word except itself, is change; and particularly, it very close to women vectors, and then gender, shocks, induced, responsive..it indicate that "climate" have gender implications particularly to womne, and it might suggest shared risks that require intergovermental collaboration to repond.
+
+```{r}
+women_synonyms <- nearest_words(word_vectors, "women")
+head(women_synonyms, n=20)
+```
+#here, we can find that women is very close to 'men', and also 'climate' and 'change'，indicating the disproportionate vulnerability of women in climate change. Other words like "burden","households", "children" may be the factor of women's vulnerability in climate change; furthermore, "women" vector also relate with the leadership of women in responding climate change.
+```{r}
+men_synonyms <- nearest_words(word_vectors, "men")
+head(men_synonyms, n=20)
+```
+##The association of “men” with terms like “cities”, “migrate”, and “towns” reflects male migration influenced by urbanization. Additionally, the linkage of “men” with “adaptation” and “prioritize” implies that men may assume more dominant roles in climate adaptation strategies. 
+
+```{r}
+mother_synonyms <- nearest_words(word_vectors, "mother")
+head(mother_synonyms, n=20)
+```
+##“mother” is closely associated with terms like “sweet”, “potatoes”, and geographically specific locations such as “Manafwa”, “Bududa”, and “Jamalganj”. These associations indicate the localized nature of mothers’ roles, particularly in subsistence farming and managing household nutrition.
+
+
+##the word "father" is absent in the discourse of gender vulnerbaility in climate change
+
+##the words "non-binary", "gay", "lesbian", "bisexual", "transgender", "queer" are absent in the discourse of gender vulnerbaility in climate change
+
+```{r}
+wife_synonyms <- nearest_words(word_vectors, "wife")
+head(wife_synonyms, n=20)
+```
+##the term “wife” correlates with “empowerment,” “participation,” and “needs,” indicating a scholarly focus on the developmental aspects of “wives” roles. The one-way association of “wife” with “husband” also suggests a dependence of women to men.
+
+```{r}
+husband_synonyms <- nearest_words(word_vectors, "husband")
+head(husband_synonyms, n=20)
+```
+
+
+##“husband” is predominantly linked with terms related to both professional and domestic context such as “work”, “household”, “practice”, “unpaid”, “paid”, “reproductive”, and “productive”. These associations might reflect the current debate on the roles and responsibilities of husbands within both economic and household contexts. 
+
+```{r}
+#then we can visualize the nearest words of women and men
+women_synonyms %>%
+  mutate(selected = "women") %>%
+  bind_rows(men_synonyms %>%
+            mutate(selected = "men")) %>%
+  group_by(selected) %>%
+  top_n(15, similarity) %>%
+  mutate(token = reorder(word, similarity)) %>%
+  filter(token != selected) %>%
+  ggplot(aes(token, similarity, fill = selected)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~selected, scales = "free") +
+  scale_fill_manual(values = c("#336B87", "#2A3132")) +
+  coord_flip() +
+  theme_tufte(base_family = "Helvetica")
+```
+
+```{r}
+#then we can visualize the nearest words of climate and vulnerability
+climate_synonyms %>%
+  mutate(selected = "climate") %>%
+  bind_rows(vulnerability_synonyms %>%
+            mutate(selected = "vulnerability")) %>%
+  group_by(selected) %>%
+  top_n(15, similarity) %>%
+  mutate(token = reorder(word, similarity)) %>%
+  filter(token != selected) %>%
+  ggplot(aes(token, similarity, fill = selected)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~selected, scales = "free") +
+  scale_fill_manual(values = c("#336B87", "#2A3132")) +
+  coord_flip() +
+  theme_tufte(base_family = "Helvetica")
+```
+
+```{r}
+#then we can visualize the nearest words of husband and mother
+husband_synonyms %>%
+  mutate(selected = "husband") %>%
+  bind_rows(mother_synonyms %>%
+            mutate(selected = "mother")) %>%
+  bind_rows(wife_synonyms %>%
+            mutate(selected = "wife")) %>%
+  group_by(selected) %>%
+  top_n(15, similarity) %>%
+  mutate(token = reorder(word, similarity)) %>%
+  filter(token != selected) %>%
+  ggplot(aes(token, similarity, fill = selected)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~selected, scales = "free") +
+  scale_fill_manual(values = c("#336B87", "#2A3132", "blue")) +
+  coord_flip() +
+  theme_tufte(base_family = "Helvetica")
+```
+
+
+
